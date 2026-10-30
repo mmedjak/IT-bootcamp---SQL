@@ -126,71 +126,39 @@ WHERE m.season = '2024/25'
 
 -- 10. Који тренер је освојио највише бодова у утакмицама у којима је његов тим губио на полувремену? Рачунајте и домаће и гостујуће утакмице.
 -- Ovaj zadatak nije zavrsen, vraticu se kasnije na njega.
-SELECT --gleda se home team
-        m.match_id,
-        m.referee_id,
-        m.home_team_id AS team_id,
-        m.away_team_id AS oponenent_id,
-        m.home_goals_ht AS goals_for_ht,
-        m.away_goals_ht AS goals_against_ht,
-        m.home_goals AS goals_for,
-        m.away_goals AS goals_against
-FROM matches m
-JOIN teams ht ON ht.team_id = m.home_team_id
--- WHERE m.home_goals_ht < m.away_goals_ht
---     AND m.home_goals > m.away_goals --15 utakmica
+WITH all_matches AS (
+                SELECT -- tim kao domacin
+                    m.match_id,
+                    t.team_name,
+                    m.home_goals_ht AS goals_for_ht,
+                    m.home_goals AS goals_for,
+                    m.away_goals_ht AS goals_against_ht,
+                    m.away_goals AS goals_against
+                FROM matches m
+                JOIN teams t ON t.team_id = m.home_team_id 
+                WHERE m.status = 'played'
+                AND m.season = '2024/25'
 
-UNION
+                UNION ALL
 
-SELECT --gleda se away team
-        m.match_id,
-        m.referee_id,
-        m.away_team_id AS team_id,
-        m.home_team_id AS oponenent_id,
-        m.home_goals_ht AS goals_against_ht,
-        m.away_goals_ht AS goals_for_ht,
-        m.home_goals AS goals_against,
-        m.away_goals AS goals_for
-FROM matches m
-JOIN teams awt ON awt.team_id = m.away_team_id
--- WHERE m.away_goals_ht < m.home_goals_ht
---     AND m.away_goals > m.home_goals --15
-ORDER BY m.match_id;
+                SELECT -- tim kao gost
+                    m.match_id,
+                    t.team_name,
+                    m.away_goals AS goals_for,
+                    m.away_goals_ht AS goals_for_ht,
+                    m.home_goals AS goals_against,
+                    m.home_goals_ht AS goals_against_ht
+                FROM matches m
+                JOIN teams t ON t.team_id = m.away_team_id 
+                WHERE m.status = 'played'
+                AND m.season = '2024/25'
+) 
 
 
-WITH parted_teams AS
-        (SELECT --gleda se home team
-            m.match_id,
-            m.referee_id,
-            m.home_team_id AS team_id,
-            m.away_team_id AS oponenent_id,
-            m.home_goals_ht AS goals_for_ht,
-            m.away_goals_ht AS goals_against_ht,
-            m.home_goals AS goals_for,
-            m.away_goals AS goals_against
-        FROM matches m
-        JOIN teams ht ON ht.team_id = m.home_team_id
-
-UNION
-
-        SELECT --gleda se away team
-                m.match_id,
-                m.referee_id,
-                m.away_team_id AS team_id,
-                m.home_team_id AS oponenent_id,
-                m.home_goals_ht AS goals_against_ht,
-                m.away_goals_ht AS goals_for_ht,
-                m.home_goals AS goals_against,
-                m.away_goals AS goals_for
-        FROM matches m
-        JOIN teams awt ON awt.team_id = m.away_team_id   
--- ORDER BY m.match_id
-        )
-
-SELECT * ,
-    r.referee_name
-FROM parted_teams pt
-JOIN referees r ON r.referee_id = pt.referee_id
+SELECT 
+        sum (goals_for + goals_against) AS total_goals
+FROM all_matches am
+JOIN manager_spells
 WHERE goals_for_ht < goals_against_ht
     AND goals_for > goals_against
 ORDER BY match_id;
