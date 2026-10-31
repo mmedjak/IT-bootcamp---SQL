@@ -102,6 +102,30 @@ WHERE season = '2024/25'
     AND attendance IS NOT NULL
 ; --24 199,49; 85,66
 
+-- Dodato: prosečna poseta i popunjenost po stadionu:
+
+SELECT 
+    s.stadium_id,
+    s.stadium_name,
+    m.match_id 
+FROM stadiums s
+LEFT JOIN matches m ON m.stadium_id = s.stadium_id 
+        AND m.season = '2024/25'
+WHERE m.match_id IS NULL; -- stadion Fairhaven Lane (stadium_id = 20) nije korišćen u sezoni 2024/25.
+
+--prosecna poseta i popunjenost po stadionu, utakmice bez podatka o poseti su izostavljene
+SELECT 
+    s.stadium_id,
+    s.stadium_name,
+    round (avg (m.attendance), 2) AS avg_attendance,
+    round (avg (100* m.attendance / s.capacity), 2) AS avg_occupancy
+FROM stadiums s
+JOIN matches m ON m.stadium_id = s.stadium_id 
+WHERE m.attendance IS NOT NULL
+        AND m.season = '2024/25'
+GROUP BY s.stadium_id, s.stadium_name
+ORDER BY avg_occupancy DESC
+; 
 
 -- 4. Судије:за сваког судију број утакмица и картони по утакмици.
 
