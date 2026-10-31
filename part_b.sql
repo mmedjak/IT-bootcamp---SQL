@@ -185,3 +185,62 @@ LIMIT 5
 
 
 -- 6. Квалитет података: бар два проблема на која сте наишли у подацима (на пример утакмица чији резултат се не слаже са догађајима, догађаји са непостојећим играчем, дан без тренера), са упитима који их проналазе.
+
+SELECT DISTINCT event_type
+FROM match_events;
+
+SELECT 
+    match_id,
+    count (*) AS total_goals
+FROM match_events e
+WHERE event_type IN ('goal', 'penalty_goal', 'own_goal')
+GROUP BY match_id;
+
+WITH total_goals AS
+        (SELECT 
+            match_id,
+            count (*) AS total_goals
+        FROM match_events e
+        WHERE event_type IN ('goal', 'penalty_goal', 'own_goal')
+        GROUP BY match_id
+        )
+SELECT 
+    m.home_team_id,
+    m.away_team_id,
+    tg.match_id,
+    tg.total_goals AS goals_from_matchevents,
+    m.home_goals + m.away_goals AS goals_from_matches
+FROM total_goals tg
+JOIN matches m ON m.match_id = tg.match_id
+WHERE m.season = '2024/25'
+    AND tg.total_goals <> m.home_goals + m.away_goals; 
+ 
+SELECT * FROM match_events WHERE match_id = 2227; -- ht, ht own goal, awt 1:2 
+SELECT * FROM matches WHERE match_id = 2227; --3:1  ht 21 awt 12
+
+-- Upitima iznad sam ustanovila da postoji neslaganje u podacima o golovima za utakmicu sa match_id 2227, odnosno da je prema tabeli match_events rezultat bio 1:2, a prema tabeli matches 3:1.
+
+
+-- SELECT DISTINCT team_id
+-- FROM manager_spells ms
+-- WHERE NOT EXISTS (
+--     SELECT 1
+--     FROM match_events e
+--     WHERE e.team_id = ms.team_id
+-- )
+-- ;
+
+SELECT 
+    ms.team_id,
+    t.team_name, 
+    ms.manager_name,
+    ms.start_date,
+    ms.end_date,
+    ms.is_caretaker
+FROM manager_spells ms
+JOIN teams t ON t.team_id = ms.team_id
+WHERE start_date < '2025-05-20' AND (end_date > '2024-08-01' OR end_date IS NULL)
+ORDER BY ms.team_id;
+
+-- Pregledom podataka dobijenih ovim upitom ustanovila sam da je Westmere Town bio bez trenera između 27. februara i 3. marta 2025, kao i da postoje duplirani podaci za tim 7.
+
