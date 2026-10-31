@@ -218,6 +218,44 @@ WHERE m.season = '2024/25'
 SELECT * FROM match_events WHERE match_id = 2227; -- ht, ht own goal, awt 1:2 
 SELECT * FROM matches WHERE match_id = 2227; --3:1  ht 21 awt 12
 
+WITH goals_from_mevents AS
+    (SELECT 
+        m.match_id,
+        sum (CASE 
+            WHEN e.event_type IN ('goal', 'penalty_goal') AND e.team_id = ht.team_id
+                OR e.event_type = 'own_goal' AND e.team_id = awt.team_id 
+                THEN 1
+            ELSE 0        
+        END) AS home_goals_from_matchevents,
+        sum (CASE 
+            WHEN e.event_type IN ('goal', 'penalty_goal') AND e.team_id = awt.team_id
+                OR e.event_type = 'own_goal' AND e.team_id = ht.team_id 
+                THEN 1
+            ELSE 0        
+        END) AS away_goals_from_matchevents
+    FROM match_events e
+    JOIN matches m ON m.match_id = e.match_id
+    JOIN teams ht ON ht.team_id = m.home_team_id
+    JOIN teams awt ON awt.team_id = m.away_team_id 
+    GROUP BY m.match_id
+)
+
+
+SELECT 
+m.match_id,
+date (m.kickoff_ts),
+concat (ht.team_name, ' - ', awt.team_name) AS match_between,
+concat (m.home_goals, ' : ', m.away_goals) AS result_from_matches,
+concat (gfe.home_goals_from_matchevents, ' : ', gfe.away_goals_from_matchevents) AS result_from_matchevents
+
+FROM matches m
+JOIN goals_from_mevents gfe ON gfe.match_id = m.match_id
+JOIN teams ht ON ht.team_id = m.home_team_id
+JOIN teams awt ON awt.team_id = m.away_team_id
+WHERE m.match_id = 2227
+;
+
+
 -- Upitima iznad sam ustanovila da postoji neslaganje u podacima o golovima za utakmicu sa match_id 2227, odnosno da je prema tabeli match_events rezultat bio 1:2, a prema tabeli matches 3:1.
 
 
