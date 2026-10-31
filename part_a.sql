@@ -124,11 +124,53 @@ WHERE m.season = '2024/25'
 
 -- A9 --> Sudija Peter Lindgren je imao najveći udeo utakmica u kojima je dosuđen bar jedan penal (dat ili promašen) sa 9 utakmica od ukupnih 105 utakmica sa penalima.
 
+-- Nakon komentara, dodajem i drugi pogled na ovaj zadatak, sa udelom u svim utakmicama istog sudije, a ne u svim utakmicama sezone.
+
+
+WITH penalty_matches AS
+    (SELECT 
+        m.referee_id,
+        count (DISTINCT e.match_id) AS penalty_matches_count
+    FROM match_events e
+    JOIN matches m ON m.match_id = e.match_id
+    JOIN referees r ON r.referee_id = m.referee_id
+    WHERE e.match_id IN 
+        (SELECT match_id FROM match_events WHERE event_type IN ('penalty_goal', 'penalty_miss'))
+        AND m.season = '2024/25'
+    GROUP BY m.referee_id
+    ),
+all_matches AS
+    (SELECT 
+        m.referee_id,
+        count(*) AS all_matches_count
+    FROM matches m
+    JOIN referees r ON r.referee_id = m.referee_id
+    WHERE m.season = '2024/25'
+    GROUP BY m.referee_id
+    )
+SELECT 
+    r.referee_name,
+    penalty_matches_count,
+    all_matches_count,
+    round (penalty_matches_count/all_matches_count, 2) AS penalty_matches_share
+    
+FROM penalty_matches pm
+JOIN all_matches am ON am.referee_id = pm.referee_id
+JOIN referees r ON r.referee_id = am.referee_id
+ORDER BY penalty_matches_share DESC
+;
+ 
+-- A9 --> Sudija Peter Lindgren je imao najveći udeo utakmica u kojima je dosuđen bar jedan penal (dat ili promašen) sa 9 utakmica sa penalima od ukupnih 20 utakmica koje je sudio, odnosno udeo od 0,45.
+
+
 -- 10. Који тренер је освојио највише бодова у утакмицама у којима је његов тим губио на полувремену? Рачунајте и домаће и гостујуће утакмице.
--- Ovaj zadatak nije zavrsen, vraticu se kasnije na njega.
+-- Naknadno dodat zadatak 
+
+
 WITH all_matches AS (
                 SELECT -- tim kao domacin
                     m.match_id,
+                    t.team_id,
                     t.team_name,
                     m.home_goals_ht AS goals_for_ht,
                     m.home_goals AS goals_for,
@@ -137,33 +179,40 @@ WITH all_matches AS (
                 FROM matches m
                 JOIN teams t ON t.team_id = m.home_team_id 
                 WHERE m.status = 'played'
-                AND m.season = '2024/25'
-
-                UNION ALL
+               
+             UNION ALL
 
                 SELECT -- tim kao gost
                     m.match_id,
+                    t.team_id,
                     t.team_name,
-                    m.away_goals AS goals_for,
                     m.away_goals_ht AS goals_for_ht,
-                    m.home_goals AS goals_against,
-                    m.home_goals_ht AS goals_against_ht
+                    m.away_goals AS goals_for,
+                    m.home_goals_ht AS goals_against_ht,
+                    m.home_goals AS goals_against
                 FROM matches m
                 JOIN teams t ON t.team_id = m.away_team_id 
                 WHERE m.status = 'played'
-                AND m.season = '2024/25'
-) 
-
+        ) 
 
 SELECT 
-        sum (goals_for + goals_against) AS total_goals
+        am.team_id,
+        am.team_name,
+        sum (CASE 
+                WHEN goals_for > goals_against THEN 3
+                WHEN goals_for = goals_against THEN 1
+                ELSE 0
+            END) AS points
 FROM all_matches am
-JOIN manager_spells
-WHERE goals_for_ht < goals_against_ht
-    AND goals_for > goals_against
-ORDER BY match_id;
+WHERE am.goals_for_ht < am.goals_against_ht
+GROUP BY am.team_name, am.team_id
+ORDER BY points DESC;
+
+-- 9	Harrowgate Albion	18
 
 
+SELECT * FROM manager_spells
+WHERE team_id = 9;
 
-
+-- A10 --> Na osnovu prvog upita ustanovila sam da je klub Harrowgate Albion osvojio najviše bodova u utakmicama u kojima je gubio na poluvremenu. Kao jedini trener kluba Harrowgate Albion tokom obe posmatrane sezone (što se vidi iz drugog upita), Zoran Tošić je konačan odgovor.
 
